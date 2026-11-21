@@ -1,154 +1,59 @@
-import { gridProps, gridArrayProps } from "./types/game-types";
+import type { Grid, PlayerId } from "./types/game-types";
 
-export const isGameOver = (square: gridProps, grid: gridProps[][]) => {
-  //going to check neighbour squares recursively to see if the game is won
-  let result: string | undefined;
-  //horizontal check
-  let counter = 1;
-  let backward = 1;
-  let forward = 1;
-  while (counter < 4) {
-    let prevSquare = (square.column - backward >= 0) ? grid![square.column - backward][square.row] : { occupied: false, player: '' };
-    let nextSquare = (square.column + forward <= 6) ? grid![square.column + forward][square.row] : { occupied: false, player: '' };
+export const COLUMNS = 7;
+export const ROWS = 6;
+const WIN_LENGTH = 4;
 
-    if (!(prevSquare!.occupied || nextSquare.occupied)) {
-      break;
-    }
-    if (prevSquare!.occupied) {
-      if (prevSquare!.player === square.player) {
-        backward++;
-        counter++;
-      } else {
-        break;
-      }
-    }
-    if (nextSquare.occupied) {
-      if (nextSquare.player === square.player) {
-        forward++;
-        counter++;
-      } else {
-        break;
-      }
-    }
-    if (counter >= 4) {
-      result = square.player;
-    }
-  }
+// Horizontal, vertical and both diagonals. Each is walked both ways.
+const DIRECTIONS: [number, number][] = [
+  [1, 0],
+  [0, 1],
+  [1, 1],
+  [1, -1],
+];
 
-  //vertical check
-  counter = 1;
-  backward = 1;
-  while (counter < 4) {
-    let prevSquare = (square.row + backward <= 5) ? grid![square.column][square.row + backward] : { occupied: false, player: '' };
-
-    if (prevSquare.player === square.player) {
-      backward++;
-      counter++;
-    } else {
-      break;
-    }
-    if (counter >= 4) {
-       result = square.player;
-    }
-  }
-
-  //left-bottom to right-top diagonal check
-  counter = 1;
-  backward = 1;
-  forward = 1;
-  while (counter < 4) {
-    let prevSquare = (square.column - backward >= 0 && square.row + backward <= 5) ? grid![square.column - backward][square.row + backward] : { occupied: false, player: '' };
-    let nextSquare = (square.column + forward <= 6 && square.row - forward >= 0) ? grid![square.column + forward][square.row - forward] : { occupied: false, player: '' };
-    if (!(prevSquare!.occupied || nextSquare.occupied)) {
-      break;
-    }
-    if (prevSquare!.occupied) {
-      if (prevSquare!.player === square.player) {
-        backward++;
-        counter++;
-      } else {
-        break;
-      }
-    }
-    if (nextSquare.occupied) {
-      if (nextSquare.player === square.player) {
-        forward++;
-        counter++;
-      } else {
-        break;
-      }
-    }
-    if (counter >= 4) {
-       result = square.player;
-    }
-  }
-
-  //top-left to right-bottom diagonal check
-  counter = 1;
-  backward = 1;
-  forward = 1;
-  while (counter < 4) {
-    let prevSquare = (square.column - backward >= 0 && square.row - backward >= 0) ? grid![square.column - backward][square.row - backward] : { occupied: false, player: '' };
-    let nextSquare = (square.column + forward <= 6 && square.row + forward <= 5) ? grid![square.column + forward][square.row + forward] : { occupied: false, player: '' };
-
-    if (!(prevSquare!.occupied || nextSquare.occupied)) {
-      break;
-    }
-    if (prevSquare!.occupied) {
-      if (prevSquare!.player === square.player) {
-        backward++;
-        counter++;
-      } else {
-        break;
-      }
-    }
-    if (nextSquare.occupied) {
-      if (nextSquare.player === square.player) {
-        forward++;
-        counter++;
-      } else {
-        break;
-      }
-    }
-    if (counter >= 4) {
-       result = square.player;
-    }
-  }
-  return result;
-}
-export function deepCopyArray<T>(arr: T[]): T[] {
-  const copy: T[] = [];
-  for (let i = 0; i < arr.length; i++) {
-    if (Array.isArray(arr[i])) {
-      copy[i] = deepCopyArray(arr[i] as any) as any;
-    } else if (typeof arr[i] === 'object' && arr[i] !== null) {
-      copy[i] = deepCopyObject(arr[i] as any) as any;
-    } else {
-      copy[i] = arr[i];
-    }
-  }
-  return copy;
-}
-export function deepCopyObject<T extends Record<string, any>>(obj: T): T {
-  const copy = {} as T;
-  for (let key in obj) {
-    if (Array.isArray(obj[key])) {
-      copy[key] = deepCopyArray(obj[key] as any) as any;
-    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-      copy[key] = deepCopyObject(obj[key] as any) as any;
-    } else {
-      copy[key] = obj[key];
-    }
-  }
-  return copy;
+export function createGrid(): Grid {
+  return Array.from({ length: COLUMNS }, (_, column) =>
+    Array.from({ length: ROWS }, (_, row) => ({ column, row, occupied: false, player: "empty" as const })),
+  );
 }
 
-export const defaultGrid: gridProps[][] = (Array.from({length: 7},  (v, k) => k).map((column) => {
-  return (
-    Array.from({length: 6},  (v, k) => k).map((row) => {
-      return ({ column, row, occupied: false, player: 'empty' })
-    })
-    )
-  }))
+export function isValidColumn(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) < COLUMNS;
+}
 
-export const gridArray: gridArrayProps = {};
+/** Row a disc dropped in `column` lands on, or -1 when the column is full. */
+export function landingRow(grid: Grid, column: number): number {
+  for (let row = ROWS - 1; row >= 0; row--) {
+    if (!grid[column][row].occupied) return row;
+  }
+  return -1;
+}
+
+/** Whether the disc at (column, row) completes a line of four for its owner. */
+export function isWinningMove(grid: Grid, column: number, row: number): boolean {
+  const player = grid[column][row].player;
+  if (player === "empty") return false;
+  return DIRECTIONS.some(
+    ([dc, dr]) =>
+      1 + countInDirection(grid, column, row, dc, dr, player) + countInDirection(grid, column, row, -dc, -dr, player) >=
+      WIN_LENGTH,
+  );
+}
+
+/** Consecutive discs of `player` next to (column, row), walking one way. */
+function countInDirection(grid: Grid, column: number, row: number, dc: number, dr: number, player: PlayerId): number {
+  let count = 0;
+  let c = column + dc;
+  let r = row + dr;
+  while (c >= 0 && c < COLUMNS && r >= 0 && r < ROWS && grid[c][r].player === player) {
+    count++;
+    c += dc;
+    r += dr;
+  }
+  return count;
+}
+
+export function isBoardFull(grid: Grid): boolean {
+  return grid.every((column) => column[0].occupied);
+}

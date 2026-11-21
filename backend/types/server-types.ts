@@ -1,27 +1,25 @@
-import { gridProps } from "./game-types";
+import type { Grid, PlayerId } from "./game-types";
+
+// frontend/src/types/socket.ts mirrors this file. Keep both in sync.
 
 export interface ServerToClientEvents {
-  createRoom: (a: object) => void;
-  enter: (a: string, b: string) => void;
-  isConnected: (a: boolean) => void;
-  timer: (a: string) => void;
-  updateBoard: (a: gridProps[][], b: string ,c: string | undefined)=> void;
+  createRoom: (data: { room: string }) => void;
+  /** username is the seat ("player1"/"player2"), or "" for a spectator. */
+  enter: (userID: string, username: PlayerId | "") => void;
+  /** Whether both seats are taken. */
+  isConnected: (connected: boolean) => void;
+  /** result: the winner, "draw", "restart" (fresh board), or undefined while the game goes on. */
+  updateBoard: (grid: Grid, turn: PlayerId, result: string | undefined) => void;
   restartRequest: () => void;
-  playerLeft: (a: string) => void;
+  playerLeft: (player: PlayerId) => void;
 }
 
+// The server identifies players by their socket, so no event carries a user id.
 export interface ClientToServerEvents {
   create: () => void;
-  enter: (a: string) => void;
+  enter: (roomID: string) => void;
   isConnected: () => void;
-  timer: (a: string, b: string) => void;
-  playerMove: (b: string, c: number) => void;
-  restartGame: (a: string) => void;
-  restartAns: (a: boolean) => void;
+  playerMove: (column: number) => void;
+  restartGame: () => void;
+  restartAns: (accepted: boolean) => void;
 }
-
-export interface InterServerEvents {
-  ping: () => void;
-}
-
-

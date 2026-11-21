@@ -12,7 +12,7 @@ export function ResultModal() {
         id="result-title"
         className="mb-20 box-content flex h-fit w-[60vw] items-center justify-center rounded-3xl border-2 border-black bg-white p-[15px] text-center text-[4rem] shadow-[0_0_10px_white] max-tablet:text-[2rem]"
       >
-        {`${result.winner} has won the game!`}
+        {result.winner ? `${result.winner} has won the game!` : "It's a draw!"}
       </div>
       <button
         type="button"

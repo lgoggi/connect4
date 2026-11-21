@@ -14,26 +14,19 @@ import {
 const INITIAL_RESULT: GameResult = { winner: "", isFinished: false, display: false };
 const CREATE_ROOM_TIMEOUT_MS = 10_000;
 
-interface Session {
-  roomID: string;
-  userID: string;
-}
-
 interface GameContextValue {
-  session: Session;
   players: Players;
   grid: Grid;
   turn: PlayerId;
-  /** Increments on every board update from the server; the turn timer restarts on it. */
+  /** Increments on every board update from the server; the turn clock restarts on it. */
   boardVersion: number;
-  /** True once both seats in the room are taken. */
+  /** True while both seats in the room are taken. */
   isConnected: boolean;
   result: GameResult;
   restartRequested: boolean;
   createRoom: () => Promise<string>;
   enterRoom: (roomID: string) => void;
   playMove: (column: number) => void;
-  passTurn: () => void;
   requestRestart: () => void;
   answerRestart: (accepted: boolean) => void;
   dismissResult: () => void;
@@ -48,7 +41,6 @@ export function useGame(): GameContextValue {
 }
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session>({ roomID: "", userID: "" });
   const [players, setPlayers] = useState<Players>({
     player1: { name: "player1", wins: 0 },
     player2: { name: "player2", wins: 0 },
@@ -65,7 +57,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const socket = getSocket();
 
-    const onIsConnected = (connected: boolean) => setIsConnected(connected);
+    const onIsConnected = (connected: boolean) => {
+      setIsConnected(connected);
+      if (!connected) return;
+      // A new opponent took the seat someone left: start a new match.
+      setPlayers((prev) => {
+        const left = (["player1", "player2"] as const).find((p) => prev[p].wins === undefined);
+        if (!left) return prev;
+        const stayed: PlayerId = left === "player1" ? "player2" : "player1";
+        return {
+          ...prev,
+          [left]: { name: left, wins: 0, display: "opponent" },
+          [stayed]: { ...prev[stayed], wins: 0 },
+        };
+      });
+    };
 
     const onUpdateBoard = (newGrid: Grid, newTurn: string, outcome: string | null | undefined) => {
       setGrid(newGrid);
@@ -74,6 +80,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       if (outcome === "restart") {
         setResult(INITIAL_RESULT);
+        setRestartRequested(false);
+      } else if (outcome === "draw") {
+        setResult({ winner: "", isFinished: true, display: true });
       } else if (isPlayerId(outcome)) {
         setResult({ winner: outcome, isFinished: true, display: true });
         setPlayers((prev) => ({
@@ -90,6 +99,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const onPlayerLeft = (player: string) => {
       if (!isPlayerId(player)) return;
+      // The server freed the seat and reset the board; show the invite again.
+      setIsConnected(false);
       setPlayers((prev) => ({
         ...prev,
         [player]: { ...prev[player], display: `${player} has left the game :(`, wins: undefined },
@@ -127,13 +138,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
   );
 
   const enterRoom = useCallback((roomID: string) => {
-    // The server gives a seat to every "enter" it receives, so sending it twice
-    // (Strict Mode re-runs effects in dev) would seat this tab as both players.
+    // Strict Mode re-runs effects in dev; entering once per room is enough.
     if (enteredRoom.current === roomID) return;
     enteredRoom.current = roomID;
 
     const socket = getSocket();
-    socket.once("enter", (userID, username) => {
+    socket.once("enter", (_userID, username) => {
       if (isPlayerId(username)) {
         const opponent: PlayerId = username === "player1" ? "player2" : "player1";
         setPlayers((prev) => ({
@@ -142,22 +152,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
           [opponent]: { ...prev[opponent], display: "opponent" },
         }));
       }
-      setSession({ roomID, userID });
       // Ask the server to tell the whole room whether both seats are now taken.
       socket.emit("isConnected");
     });
     socket.emit("enter", roomID);
   }, []);
 
-  const { roomID, userID } = session;
+  const playMove = useCallback((column: number) => getSocket().emit("playerMove", column), []);
 
-  const playMove = useCallback((column: number) => getSocket().emit("playerMove", userID, column), [userID]);
-
-  // The server only accepts this from the player whose turn it is, and answers
-  // with an updateBoard. Until then the turn stays as the server last said.
-  const passTurn = useCallback(() => getSocket().emit("timer", roomID, userID), [roomID, userID]);
-
-  const requestRestart = useCallback(() => getSocket().emit("restartGame", userID), [userID]);
+  const requestRestart = useCallback(() => getSocket().emit("restartGame"), []);
 
   const answerRestart = useCallback((accepted: boolean) => {
     setRestartRequested(false);
@@ -169,7 +172,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   return (
     <GameContext.Provider
       value={{
-        session,
         players,
         grid,
         turn,
@@ -180,7 +182,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
         createRoom,
         enterRoom,
         playMove,
-        passTurn,
         requestRestart,
         answerRestart,
         dismissResult,
