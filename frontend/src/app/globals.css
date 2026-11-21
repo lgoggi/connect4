@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-main-purple: #7945ff;
+  --color-darker-purple: #5c2dd5;
+  --color-player1: #fd6687;
+  --color-player2: #ffce67;
+
+  /* The design is desktop-first with max-width queries (<=997px, <=540px).
+     Use them as `max-tablet:` / `max-phone:`, which compile to `width < value`. */
+  --breakpoint-tablet: 998px;
+  --breakpoint-phone: 541px;
+
+  --animate-fade: fade 7s forwards;
+
+  @keyframes fade {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    /* Preflight sets 1.5; the design was laid out with the font's normal line height. */
+    line-height: normal;
+  }
+
+  body {
+    background-color: var(--color-main-purple);
+  }
+}
