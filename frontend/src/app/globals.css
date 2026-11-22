@@ -12,6 +12,61 @@
   --breakpoint-phone: 541px;
 
   --animate-fade: fade 7s forwards;
+  --animate-drop: drop var(--drop-duration, 0.5s) linear both;
+  --animate-win-pulse: win-pulse 1s ease-in-out var(--pulse-delay, 0s) infinite;
+  --animate-backdrop-in: backdrop-in 0.25s ease-out var(--modal-delay, 0s) both;
+  --animate-pop-in: pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--modal-delay, 0s) + 0.1s) both;
+
+  /* Falls from just above the board (--drop-rows cells up) and bounces twice.
+     The fall eases in like gravity; each bounce is smaller than the last. */
+  @keyframes drop {
+    0% {
+      transform: translateY(calc(var(--drop-rows, 1) * -1 * (100% + var(--gap, 0px))));
+      animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45);
+    }
+    65% {
+      transform: translateY(0);
+      animation-timing-function: ease-out;
+    }
+    78% {
+      transform: translateY(-14%);
+      animation-timing-function: ease-in;
+    }
+    90% {
+      transform: translateY(0);
+      animation-timing-function: ease-out;
+    }
+    95% {
+      transform: translateY(-4%);
+      animation-timing-function: ease-in;
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes win-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.15);
+    }
+  }
+
+  @keyframes backdrop-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.8) translateY(20px);
+    }
+  }
 
   @keyframes fade {
     0% {

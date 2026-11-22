@@ -7,7 +7,8 @@ export function ResultModal() {
   const { result, dismissResult, requestRestart } = useGame();
 
   return (
-    <Modal labelledBy="result-title" onClose={dismissResult}>
+    // Waits for the last disc to land and the winning line to start pulsing.
+    <Modal labelledBy="result-title" onClose={dismissResult} delay={1.4}>
       <div
         id="result-title"
         className="mb-20 box-content flex h-fit w-[60vw] items-center justify-center rounded-3xl border-2 border-black bg-white p-[15px] text-center text-[4rem] shadow-[0_0_10px_white] max-tablet:text-[2rem]"

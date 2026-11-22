@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { CloseIcon } from "./icons";
 
 interface ModalProps {
@@ -6,16 +6,20 @@ interface ModalProps {
   labelledBy: string;
   /** Shows a close button in the corner when given. */
   onClose?: () => void;
+  /** Seconds to wait before fading in, e.g. to let the board finish animating. */
+  delay?: number;
   children: ReactNode;
 }
 
-export function Modal({ labelledBy, onClose, children }: ModalProps) {
+export function Modal({ labelledBy, onClose, delay = 0, children }: ModalProps) {
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby={labelledBy}
-      className="fixed top-0 left-0 z-10 flex h-screen w-screen flex-col items-center justify-center bg-[rgba(50,50,50,0.85)]"
+      // The backdrop fades in and each child pops in just after it.
+      className="fixed top-0 left-0 z-10 flex h-screen w-screen animate-backdrop-in flex-col items-center justify-center bg-[rgba(50,50,50,0.85)] *:animate-pop-in motion-reduce:animate-none motion-reduce:*:animate-none"
+      style={{ "--modal-delay": `${delay}s` } as CSSProperties}
     >
       {onClose && (
         <button
